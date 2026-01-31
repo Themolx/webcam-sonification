@@ -95,6 +95,9 @@
 .control-group label {
   font-size: 12px;
   color: #999;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .control-group select,
@@ -176,6 +179,145 @@ button:active {
   color: #000;
 }
 
+.reset-circle {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #fff;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.reset-circle:hover {
+  background-color: #999;
+}
+
+.preset-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #333;
+}
+
+.preset-slots {
+  display: flex;
+  gap: 8px;
+}
+
+.preset-slot {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 12px;
+  border: 1px solid #444;
+  color: #444;
+}
+
+.preset-slot.filled {
+  border-color: #fff;
+  color: #fff;
+}
+
+.preset-slot.selected-a {
+  background-color: #333;
+}
+
+.preset-slot.selected-b {
+  background-color: #666;
+}
+
+.preset-slot:hover {
+  background-color: #fff;
+  color: #000;
+}
+
+.interpolation-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.interpolation-control label {
+  font-size: 12px;
+  color: #999;
+}
+
+.interpolation-control input[type='range'] {
+  width: 150px;
+}
+
+.clear-blend {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.preset-help {
+  font-size: 10px;
+  color: #555;
+}
+
+.modulation-panel {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #333;
+}
+
+.modulation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #999;
+}
+
+.add-mod-btn {
+  padding: 4px 12px;
+  font-size: 11px;
+}
+
+.modulation-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.modulation-row select {
+  min-width: 100px;
+  padding: 4px;
+  font-size: 12px;
+}
+
+.mod-control {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mod-control label {
+  font-size: 10px;
+  color: #666;
+}
+
+.mod-control input[type='range'] {
+  width: 80px;
+  height: 16px;
+}
+
+.remove-mod-btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1;
+}
+
 .info-row {
   font-size: 12px;
   color: #666;
@@ -214,6 +356,16 @@ button:active {
 
   .help-row {
     font-size: 10px;
+  }
+
+  .preset-slot {
+    width: 28px;
+    height: 28px;
+  }
+
+  .modulation-row {
+    flex-wrap: wrap;
+    gap: 8px;
   }
 }
 

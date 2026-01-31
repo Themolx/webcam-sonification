@@ -13,8 +13,9 @@ import {
   loadSettings,
   saveSettings,
   randomizePattern,
+  applyModulations,
 } from './types';
-import type { SynthParams, SynthMode, PatternParams, InputSource } from './types';
+import type { SynthParams, SynthMode, PatternParams, InputSource, ModulationConfig, AppParams } from './types';
 import './App.css';
 
 function App() {
@@ -30,6 +31,10 @@ function App() {
     const saved = loadSettings();
     return saved?.pattern ?? DEFAULT_PATTERN_PARAMS;
   });
+  const [modulations, setModulations] = useState<ModulationConfig[]>(() => {
+    const saved = loadSettings();
+    return saved?.modulations ?? [];
+  });
   const [isRunning, setIsRunning] = useState(false);
   const [showHelp, setShowHelp] = useState(true);
   const [waveformData, setWaveformData] = useState<Float32Array | null>(null);
@@ -40,12 +45,14 @@ function App() {
     y2: number;
   } | null>(null);
   const [containerWidth, setContainerWidth] = useState(640);
+  const [modulatedParams, setModulatedParams] = useState<PatternParams>(patternParams);
 
   const audioEngineRef = useRef<AudioEngine | null>(null);
   const videoCanvasRef = useRef<VideoCanvasHandle>(null);
   const patternRef = useRef<PatternGeneratorHandle>(null);
   const animationFrameRef = useRef<number>(0);
   const hasAutoStarted = useRef(false);
+  const modulationTimeRef = useRef(0);
 
   const {
     videoRef,
@@ -89,6 +96,43 @@ function App() {
     },
     [isRunning, inputSource, startCamera, stopCamera]
   );
+
+  const handleModulationsChange = useCallback((newModulations: ModulationConfig[]) => {
+    setModulations(newModulations);
+  }, []);
+
+  const handleLoadPreset = useCallback((params: AppParams) => {
+    setInputSource(params.inputSource);
+    setSynthParams(params.synth);
+    setPatternParams(params.pattern);
+    setModulations(params.modulations || []);
+
+    if (audioEngineRef.current) {
+      audioEngineRef.current.setVolume(params.synth.volume);
+    }
+  }, []);
+
+  // Apply modulations
+  useEffect(() => {
+    if (!isRunning || modulations.length === 0) {
+      setModulatedParams(patternParams);
+      return;
+    }
+
+    let animationId: number;
+    const updateModulations = () => {
+      modulationTimeRef.current += 0.016;
+      const modulated = applyModulations(patternParams, modulations, modulationTimeRef.current);
+      setModulatedParams(modulated);
+      animationId = requestAnimationFrame(updateModulations);
+    };
+
+    updateModulations();
+
+    return () => {
+      cancelAnimationFrame(animationId);
+    };
+  }, [isRunning, modulations, patternParams]);
 
   const processFrame = useCallback(() => {
     if (!isRunning || !audioEngineRef.current) {
@@ -183,6 +227,8 @@ function App() {
     setSynthParams(DEFAULT_SYNTH_PARAMS);
     setPatternParams(DEFAULT_PATTERN_PARAMS);
     setInputSource(DEFAULT_PARAMS.inputSource);
+    setModulations([]);
+    modulationTimeRef.current = 0;
 
     if (audioEngineRef.current) {
       audioEngineRef.current.reset(DEFAULT_SYNTH_PARAMS);
@@ -196,8 +242,9 @@ function App() {
       inputSource,
       synth: synthParams,
       pattern: patternParams,
+      modulations,
     });
-  }, [inputSource, synthParams, patternParams]);
+  }, [inputSource, synthParams, patternParams, modulations]);
 
   const handleRandom = useCallback(() => {
     setPatternParams(randomizePattern());
@@ -210,6 +257,14 @@ function App() {
       handleStart();
     }
   }, [handleStart]);
+
+  // Auto-save on changes
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      handleSave();
+    }, 1000);
+    return () => clearTimeout(timeout);
+  }, [inputSource, synthParams, patternParams, modulations, handleSave]);
 
   useEffect(() => {
     const shouldRun = inputSource === 'generator' ? isRunning : isRunning && cameraActive;
@@ -325,7 +380,7 @@ function App() {
         {inputSource === 'generator' ? (
           <PatternGenerator
             ref={patternRef}
-            params={patternParams}
+            params={modulations.length > 0 ? modulatedParams : patternParams}
             showScanline={showScanline}
             scanlineCoords={scanlineCoords}
             isRunning={isRunning}
@@ -345,14 +400,16 @@ function App() {
           synthParams={synthParams}
           patternParams={patternParams}
           inputSource={inputSource}
+          modulations={modulations}
           isRunning={isRunning}
           onSynthChange={handleSynthChange}
           onPatternChange={handlePatternChange}
           onInputSourceChange={handleInputSourceChange}
+          onModulationsChange={handleModulationsChange}
+          onLoadPreset={handleLoadPreset}
           onStart={handleStart}
           onStop={handleStop}
           onReset={handleReset}
-          onSave={handleSave}
           onRandom={handleRandom}
           onSwitchCamera={switchCamera}
           cameraLabel={currentCameraLabel}
