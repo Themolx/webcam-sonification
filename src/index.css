@@ -1,0 +1,24 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #fff;
+  background-color: #000;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: #000;
+}
+
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+}

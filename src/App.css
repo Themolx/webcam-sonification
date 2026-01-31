@@ -1,0 +1,222 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: #000;
+  color: #fff;
+}
+
+.main-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.error-message {
+  padding: 12px;
+  background-color: #000;
+  border: 1px solid #fff;
+  text-align: center;
+}
+
+.video-container {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  background-color: #000;
+  aspect-ratio: 4 / 3;
+}
+
+.video-element {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background-color: #111;
+}
+
+.hidden-canvas {
+  display: none;
+}
+
+.overlay-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.waveform-canvas {
+  width: 100%;
+  max-width: 640px;
+  height: 80px;
+  display: block;
+  margin: 0 auto;
+  border-top: 1px solid #333;
+  border-bottom: 1px solid #333;
+}
+
+.controls {
+  padding: 12px;
+  background-color: #000;
+  border-top: 1px solid #333;
+}
+
+.controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.controls-row:last-child {
+  margin-bottom: 0;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.control-group label {
+  font-size: 12px;
+  color: #999;
+}
+
+.control-group select,
+.control-group input[type='range'] {
+  background-color: #000;
+  color: #fff;
+  border: 1px solid #fff;
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.control-group select {
+  min-width: 120px;
+  cursor: pointer;
+}
+
+.control-group select:focus,
+.control-group input:focus {
+  outline: 1px solid #fff;
+  outline-offset: 2px;
+}
+
+.control-group input[type='range'] {
+  width: 100px;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  background: #000;
+  border: 1px solid #fff;
+}
+
+.control-group input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.control-group input[type='range']::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  cursor: pointer;
+  border: none;
+}
+
+.control-group.buttons {
+  flex-direction: row;
+  gap: 8px;
+}
+
+button {
+  background-color: #000;
+  color: #fff;
+  border: 1px solid #fff;
+  padding: 8px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+button:hover {
+  background-color: #fff;
+  color: #000;
+}
+
+button:focus {
+  outline: 1px solid #fff;
+  outline-offset: 2px;
+}
+
+button:active {
+  background-color: #ccc;
+  color: #000;
+}
+
+.info-row {
+  font-size: 12px;
+  color: #666;
+}
+
+.info-item {
+  margin-right: 16px;
+}
+
+.help-row {
+  font-size: 11px;
+  color: #555;
+}
+
+@media (max-width: 600px) {
+  .controls {
+    padding: 8px;
+  }
+
+  .controls-row {
+    gap: 8px;
+  }
+
+  .control-group select {
+    min-width: 100px;
+  }
+
+  .control-group input[type='range'] {
+    width: 80px;
+  }
+
+  button {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .help-row {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 400px) {
+  .control-group label {
+    font-size: 11px;
+  }
+
+  .control-group select,
+  button {
+    font-size: 12px;
+  }
+}
