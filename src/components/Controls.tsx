@@ -12,6 +12,8 @@ interface ControlsProps {
   onStart: () => void;
   onStop: () => void;
   onReset: () => void;
+  onSave: () => void;
+  onRandom: () => void;
   onSwitchCamera: () => void;
   cameraLabel: string;
   showHelp: boolean;
@@ -28,6 +30,8 @@ export function Controls({
   onStart,
   onStop,
   onReset,
+  onSave,
+  onRandom,
   onSwitchCamera,
   cameraLabel,
   showHelp,
@@ -108,6 +112,8 @@ export function Controls({
             <button onClick={onStop}>Stop</button>
           )}
           <button onClick={onReset}>Reset</button>
+          <button onClick={onSave}>Save</button>
+          {isGenerator && <button onClick={onRandom}>Random</button>}
           {!isGenerator && <button onClick={onSwitchCamera}>Camera</button>}
         </div>
       </div>
@@ -168,6 +174,17 @@ export function Controls({
                 step="0.05"
                 value={patternParams.fillRatio}
                 onChange={(e) => onPatternChange({ fillRatio: Number(e.target.value) })}
+              />
+            </div>
+
+            <div className="control-group">
+              <label>Round: {patternParams.roundness}%</label>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={patternParams.roundness}
+                onChange={(e) => onPatternChange({ roundness: Number(e.target.value) })}
               />
             </div>
 
@@ -329,7 +346,7 @@ export function Controls({
 
       {showHelp && (
         <div className="controls-row help-row">
-          <span>Keys: 1-7 modes, A/D scan angle, W/S speed, +/- volume, G toggle source, R reset, H help</span>
+          <span>Keys: 1-7 modes, A/D angle, W/S speed, +/- volume, G source, R reset, S save, X random, H help</span>
         </div>
       )}
     </div>

@@ -5,14 +5,31 @@ import { Controls } from './components/Controls';
 import { Waveform } from './components/Waveform';
 import { VideoCanvas, type VideoCanvasHandle } from './components/VideoCanvas';
 import { PatternGenerator, type PatternGeneratorHandle } from './components/PatternGenerator';
-import { DEFAULT_PARAMS, SYNTH_MODES, DEFAULT_SYNTH_PARAMS, DEFAULT_PATTERN_PARAMS } from './types';
+import {
+  DEFAULT_PARAMS,
+  SYNTH_MODES,
+  DEFAULT_SYNTH_PARAMS,
+  DEFAULT_PATTERN_PARAMS,
+  loadSettings,
+  saveSettings,
+  randomizePattern,
+} from './types';
 import type { SynthParams, SynthMode, PatternParams, InputSource } from './types';
 import './App.css';
 
 function App() {
-  const [inputSource, setInputSource] = useState<InputSource>(DEFAULT_PARAMS.inputSource);
-  const [synthParams, setSynthParams] = useState<SynthParams>(DEFAULT_SYNTH_PARAMS);
-  const [patternParams, setPatternParams] = useState<PatternParams>(DEFAULT_PATTERN_PARAMS);
+  const [inputSource, setInputSource] = useState<InputSource>(() => {
+    const saved = loadSettings();
+    return saved?.inputSource ?? DEFAULT_PARAMS.inputSource;
+  });
+  const [synthParams, setSynthParams] = useState<SynthParams>(() => {
+    const saved = loadSettings();
+    return saved?.synth ?? DEFAULT_SYNTH_PARAMS;
+  });
+  const [patternParams, setPatternParams] = useState<PatternParams>(() => {
+    const saved = loadSettings();
+    return saved?.pattern ?? DEFAULT_PATTERN_PARAMS;
+  });
   const [isRunning, setIsRunning] = useState(false);
   const [showHelp, setShowHelp] = useState(true);
   const [waveformData, setWaveformData] = useState<Float32Array | null>(null);
@@ -28,6 +45,7 @@ function App() {
   const videoCanvasRef = useRef<VideoCanvasHandle>(null);
   const patternRef = useRef<PatternGeneratorHandle>(null);
   const animationFrameRef = useRef<number>(0);
+  const hasAutoStarted = useRef(false);
 
   const {
     videoRef,
@@ -57,9 +75,20 @@ function App() {
     setPatternParams((prev) => ({ ...prev, ...newParams }));
   }, []);
 
-  const handleInputSourceChange = useCallback((source: InputSource) => {
-    setInputSource(source);
-  }, []);
+  const handleInputSourceChange = useCallback(
+    async (source: InputSource) => {
+      const wasRunning = isRunning;
+
+      if (source === 'camera' && wasRunning) {
+        await startCamera();
+      } else if (source === 'generator' && inputSource === 'camera') {
+        stopCamera();
+      }
+
+      setInputSource(source);
+    },
+    [isRunning, inputSource, startCamera, stopCamera]
+  );
 
   const processFrame = useCallback(() => {
     if (!isRunning || !audioEngineRef.current) {
@@ -122,9 +151,11 @@ function App() {
       await startCamera();
     }
 
-    const engine = new AudioEngine();
-    await engine.initialize(synthParams);
-    audioEngineRef.current = engine;
+    if (!audioEngineRef.current) {
+      const engine = new AudioEngine();
+      await engine.initialize(synthParams);
+      audioEngineRef.current = engine;
+    }
 
     setIsRunning(true);
   }, [startCamera, synthParams, inputSource]);
@@ -149,11 +180,36 @@ function App() {
   }, [stopCamera, inputSource]);
 
   const handleReset = useCallback(() => {
+    setSynthParams(DEFAULT_SYNTH_PARAMS);
+    setPatternParams(DEFAULT_PATTERN_PARAMS);
+    setInputSource(DEFAULT_PARAMS.inputSource);
+
     if (audioEngineRef.current) {
-      audioEngineRef.current.reset(synthParams);
+      audioEngineRef.current.reset(DEFAULT_SYNTH_PARAMS);
+      audioEngineRef.current.setVolume(DEFAULT_SYNTH_PARAMS.volume);
     }
     setScanlineCoords(null);
-  }, [synthParams]);
+  }, []);
+
+  const handleSave = useCallback(() => {
+    saveSettings({
+      inputSource,
+      synth: synthParams,
+      pattern: patternParams,
+    });
+  }, [inputSource, synthParams, patternParams]);
+
+  const handleRandom = useCallback(() => {
+    setPatternParams(randomizePattern());
+  }, []);
+
+  // Auto-start on page load
+  useEffect(() => {
+    if (!hasAutoStarted.current) {
+      hasAutoStarted.current = true;
+      handleStart();
+    }
+  }, [handleStart]);
 
   useEffect(() => {
     const shouldRun = inputSource === 'generator' ? isRunning : isRunning && cameraActive;
@@ -198,7 +254,9 @@ function App() {
           handleSynthChange({ speed: Math.min(5, synthParams.speed + 0.2) });
           break;
         case 's':
-          handleSynthChange({ speed: Math.max(0.1, synthParams.speed - 0.2) });
+          if (!e.ctrlKey && !e.metaKey) {
+            handleSynthChange({ speed: Math.max(0.1, synthParams.speed - 0.2) });
+          }
           break;
         case '+':
         case '=':
@@ -208,7 +266,7 @@ function App() {
           handleSynthChange({ volume: Math.max(0, synthParams.volume - 10) });
           break;
         case 'g':
-          setInputSource((prev) => (prev === 'generator' ? 'camera' : 'generator'));
+          handleInputSourceChange(inputSource === 'generator' ? 'camera' : 'generator');
           break;
         case 'c':
           if (inputSource === 'camera') {
@@ -217,6 +275,11 @@ function App() {
           break;
         case 'r':
           handleReset();
+          break;
+        case 'x':
+          if (inputSource === 'generator') {
+            handleRandom();
+          }
           break;
         case 'h':
           setShowHelp((prev) => !prev);
@@ -230,7 +293,16 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [synthParams, inputSource, handleSynthChange, switchCamera, handleReset, handleStop]);
+  }, [
+    synthParams,
+    inputSource,
+    handleSynthChange,
+    handleInputSourceChange,
+    switchCamera,
+    handleReset,
+    handleRandom,
+    handleStop,
+  ]);
 
   useEffect(() => {
     const updateWidth = () => {
@@ -280,6 +352,8 @@ function App() {
           onStart={handleStart}
           onStop={handleStop}
           onReset={handleReset}
+          onSave={handleSave}
+          onRandom={handleRandom}
           onSwitchCamera={switchCamera}
           cameraLabel={currentCameraLabel}
           showHelp={showHelp}

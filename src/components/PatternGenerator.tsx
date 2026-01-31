@@ -78,9 +78,16 @@ export const PatternGenerator = forwardRef<PatternGeneratorHandle, PatternGenera
           const x = -totalWidth / 2 + col * (params.cellSize + params.gap);
           const y = -totalHeight / 2 + row * (params.cellSize + params.gap);
           const size = params.cellSize * params.fillRatio;
-          const offset = (params.cellSize - size) / 2;
+          const cellOffset = (params.cellSize - size) / 2;
+          const radius = (params.roundness / 100) * (size / 2);
 
-          ctx.fillRect(x + offset, y + offset, size, size);
+          if (radius > 0) {
+            ctx.beginPath();
+            ctx.roundRect(x + cellOffset, y + cellOffset, size, size, radius);
+            ctx.fill();
+          } else {
+            ctx.fillRect(x + cellOffset, y + cellOffset, size, size);
+          }
         }
       }
 

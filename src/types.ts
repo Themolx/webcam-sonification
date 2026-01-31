@@ -16,6 +16,7 @@ export interface PatternParams {
   cellSize: number;
   gap: number;
   fillRatio: number;
+  roundness: number;
   invert: boolean;
 
   // Transform
@@ -82,6 +83,7 @@ export const DEFAULT_PATTERN_PARAMS: PatternParams = {
   cellSize: 40,
   gap: 4,
   fillRatio: 1.0,
+  roundness: 0,
   invert: false,
 
   rotation: 0,
@@ -104,3 +106,54 @@ export const DEFAULT_PARAMS: AppParams = {
   synth: DEFAULT_SYNTH_PARAMS,
   pattern: DEFAULT_PATTERN_PARAMS,
 };
+
+const STORAGE_KEY = 'webcam-sonification-settings';
+
+export function saveSettings(params: AppParams): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(params));
+  } catch (e) {
+    console.warn('Failed to save settings', e);
+  }
+}
+
+export function loadSettings(): AppParams | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored) as AppParams;
+    }
+  } catch (e) {
+    console.warn('Failed to load settings', e);
+  }
+  return null;
+}
+
+function randomRange(min: number, max: number, step = 1): number {
+  const steps = Math.floor((max - min) / step);
+  return min + Math.floor(Math.random() * (steps + 1)) * step;
+}
+
+export function randomizePattern(): PatternParams {
+  return {
+    columns: randomRange(2, 20),
+    rows: randomRange(2, 20),
+    cellSize: randomRange(10, 80),
+    gap: randomRange(0, 30),
+    fillRatio: randomRange(0.3, 1.0, 0.1),
+    roundness: randomRange(0, 50),
+    invert: Math.random() > 0.5,
+    rotation: randomRange(-180, 180),
+    skewX: randomRange(-45, 45),
+    skewY: randomRange(-45, 45),
+    scaleX: randomRange(0.5, 2.0, 0.1),
+    scaleY: randomRange(0.5, 2.0, 0.1),
+    offsetX: randomRange(-100, 100),
+    offsetY: randomRange(-100, 100),
+    animateRotation: randomRange(-50, 50),
+    animateSkewX: randomRange(-20, 20),
+    animateSkewY: randomRange(-20, 20),
+    animateOffsetX: randomRange(0, 5, 0.5),
+    animateOffsetY: randomRange(0, 5, 0.5),
+  };
+}
