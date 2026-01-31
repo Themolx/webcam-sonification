@@ -1,10 +1,14 @@
 import { SYNTH_MODES } from '../types';
-import type { SynthMode, SynthParams } from '../types';
+import type { SynthMode, SynthParams, PatternParams, InputSource } from '../types';
 
 interface ControlsProps {
-  params: SynthParams;
+  synthParams: SynthParams;
+  patternParams: PatternParams;
+  inputSource: InputSource;
   isRunning: boolean;
-  onParamsChange: (params: Partial<SynthParams>) => void;
+  onSynthChange: (params: Partial<SynthParams>) => void;
+  onPatternChange: (params: Partial<PatternParams>) => void;
+  onInputSourceChange: (source: InputSource) => void;
   onStart: () => void;
   onStop: () => void;
   onReset: () => void;
@@ -14,9 +18,13 @@ interface ControlsProps {
 }
 
 export function Controls({
-  params,
+  synthParams,
+  patternParams,
+  inputSource,
   isRunning,
-  onParamsChange,
+  onSynthChange,
+  onPatternChange,
+  onInputSourceChange,
   onStart,
   onStop,
   onReset,
@@ -24,16 +32,28 @@ export function Controls({
   cameraLabel,
   showHelp,
 }: ControlsProps) {
-  const isScanlineMode = params.mode === 'scanline' || params.mode === 'scanline-color';
+  const isScanlineMode = synthParams.mode === 'scanline' || synthParams.mode === 'scanline-color';
+  const isGenerator = inputSource === 'generator';
 
   return (
     <div className="controls">
       <div className="controls-row">
         <div className="control-group">
+          <label>Source</label>
+          <select
+            value={inputSource}
+            onChange={(e) => onInputSourceChange(e.target.value as InputSource)}
+          >
+            <option value="generator">Generator</option>
+            <option value="camera">Camera</option>
+          </select>
+        </div>
+
+        <div className="control-group">
           <label>Mode</label>
           <select
-            value={params.mode}
-            onChange={(e) => onParamsChange({ mode: e.target.value as SynthMode })}
+            value={synthParams.mode}
+            onChange={(e) => onSynthChange({ mode: e.target.value as SynthMode })}
           >
             {SYNTH_MODES.map((mode) => (
               <option key={mode.id} value={mode.id}>
@@ -44,38 +64,38 @@ export function Controls({
         </div>
 
         <div className="control-group">
-          <label>Volume: {params.volume}%</label>
+          <label>Volume: {synthParams.volume}%</label>
           <input
             type="range"
             min="0"
             max="100"
-            value={params.volume}
-            onChange={(e) => onParamsChange({ volume: Number(e.target.value) })}
+            value={synthParams.volume}
+            onChange={(e) => onSynthChange({ volume: Number(e.target.value) })}
           />
         </div>
 
         {isScanlineMode && (
           <>
             <div className="control-group">
-              <label>Angle: {params.angle}deg</label>
+              <label>Scan Angle: {synthParams.angle}deg</label>
               <input
                 type="range"
                 min="0"
                 max="360"
-                value={params.angle}
-                onChange={(e) => onParamsChange({ angle: Number(e.target.value) })}
+                value={synthParams.angle}
+                onChange={(e) => onSynthChange({ angle: Number(e.target.value) })}
               />
             </div>
 
             <div className="control-group">
-              <label>Speed: {params.speed.toFixed(1)}x</label>
+              <label>Scan Speed: {synthParams.speed.toFixed(1)}x</label>
               <input
                 type="range"
                 min="0.1"
                 max="5"
                 step="0.1"
-                value={params.speed}
-                onChange={(e) => onParamsChange({ speed: Number(e.target.value) })}
+                value={synthParams.speed}
+                onChange={(e) => onSynthChange({ speed: Number(e.target.value) })}
               />
             </div>
           </>
@@ -88,18 +108,228 @@ export function Controls({
             <button onClick={onStop}>Stop</button>
           )}
           <button onClick={onReset}>Reset</button>
-          <button onClick={onSwitchCamera}>Camera</button>
+          {!isGenerator && <button onClick={onSwitchCamera}>Camera</button>}
         </div>
       </div>
 
+      {isGenerator && (
+        <>
+          <div className="controls-row">
+            <div className="control-group">
+              <label>Columns: {patternParams.columns}</label>
+              <input
+                type="range"
+                min="1"
+                max="32"
+                value={patternParams.columns}
+                onChange={(e) => onPatternChange({ columns: Number(e.target.value) })}
+              />
+            </div>
+
+            <div className="control-group">
+              <label>Rows: {patternParams.rows}</label>
+              <input
+                type="range"
+                min="1"
+                max="32"
+                value={patternParams.rows}
+                onChange={(e) => onPatternChange({ rows: Number(e.target.value) })}
+              />
+            </div>
+
+            <div className="control-group">
+              <label>Cell Size: {patternParams.cellSize}</label>
+              <input
+                type="range"
+                min="4"
+                max="100"
+                value={patternParams.cellSize}
+                onChange={(e) => onPatternChange({ cellSize: Number(e.target.value) })}
+              />
+            </div>
+
+            <div className="control-group">
+              <label>Gap: {patternParams.gap}</label>
+              <input
+                type="range"
+                min="0"
+                max="50"
+                value={patternParams.gap}
+                onChange={(e) => onPatternChange({ gap: Number(e.target.value) })}
+              />
+            </div>
+
+            <div className="control-group">
+              <label>Fill: {Math.round(patternParams.fillRatio * 100)}%</label>
+              <input
+                type="range"
+                min="0.1"
+                max="1"
+                step="0.05"
+                value={patternParams.fillRatio}
+                onChange={(e) => onPatternChange({ fillRatio: Number(e.target.value) })}
+              />
+            </div>
+
+            <div className="control-group buttons">
+              <button onClick={() => onPatternChange({ invert: !patternParams.invert })}>
+                {patternParams.invert ? 'White BG' : 'Black BG'}
+              </button>
+            </div>
+          </div>
+
+          <div className="controls-row">
+            <div className="control-group">
+              <label>Rotation: {patternParams.rotation}deg</label>
+              <input
+                type="range"
+                min="-180"
+                max="180"
+                value={patternParams.rotation}
+                onChange={(e) => onPatternChange({ rotation: Number(e.target.value) })}
+              />
+            </div>
+
+            <div className="control-group">
+              <label>Skew X: {patternParams.skewX}deg</label>
+              <input
+                type="range"
+                min="-60"
+                max="60"
+                value={patternParams.skewX}
+                onChange={(e) => onPatternChange({ skewX: Number(e.target.value) })}
+              />
+            </div>
+
+            <div className="control-group">
+              <label>Skew Y: {patternParams.skewY}deg</label>
+              <input
+                type="range"
+                min="-60"
+                max="60"
+                value={patternParams.skewY}
+                onChange={(e) => onPatternChange({ skewY: Number(e.target.value) })}
+              />
+            </div>
+
+            <div className="control-group">
+              <label>Scale X: {patternParams.scaleX.toFixed(1)}</label>
+              <input
+                type="range"
+                min="0.1"
+                max="3"
+                step="0.1"
+                value={patternParams.scaleX}
+                onChange={(e) => onPatternChange({ scaleX: Number(e.target.value) })}
+              />
+            </div>
+
+            <div className="control-group">
+              <label>Scale Y: {patternParams.scaleY.toFixed(1)}</label>
+              <input
+                type="range"
+                min="0.1"
+                max="3"
+                step="0.1"
+                value={patternParams.scaleY}
+                onChange={(e) => onPatternChange({ scaleY: Number(e.target.value) })}
+              />
+            </div>
+          </div>
+
+          <div className="controls-row">
+            <div className="control-group">
+              <label>Offset X: {patternParams.offsetX}</label>
+              <input
+                type="range"
+                min="-200"
+                max="200"
+                value={patternParams.offsetX}
+                onChange={(e) => onPatternChange({ offsetX: Number(e.target.value) })}
+              />
+            </div>
+
+            <div className="control-group">
+              <label>Offset Y: {patternParams.offsetY}</label>
+              <input
+                type="range"
+                min="-200"
+                max="200"
+                value={patternParams.offsetY}
+                onChange={(e) => onPatternChange({ offsetY: Number(e.target.value) })}
+              />
+            </div>
+
+            <div className="control-group">
+              <label>Anim Rot: {patternParams.animateRotation}</label>
+              <input
+                type="range"
+                min="-100"
+                max="100"
+                value={patternParams.animateRotation}
+                onChange={(e) => onPatternChange({ animateRotation: Number(e.target.value) })}
+              />
+            </div>
+
+            <div className="control-group">
+              <label>Anim Skew X: {patternParams.animateSkewX}</label>
+              <input
+                type="range"
+                min="-50"
+                max="50"
+                value={patternParams.animateSkewX}
+                onChange={(e) => onPatternChange({ animateSkewX: Number(e.target.value) })}
+              />
+            </div>
+
+            <div className="control-group">
+              <label>Anim Skew Y: {patternParams.animateSkewY}</label>
+              <input
+                type="range"
+                min="-50"
+                max="50"
+                value={patternParams.animateSkewY}
+                onChange={(e) => onPatternChange({ animateSkewY: Number(e.target.value) })}
+              />
+            </div>
+          </div>
+
+          <div className="controls-row">
+            <div className="control-group">
+              <label>Anim Offset X: {patternParams.animateOffsetX.toFixed(1)}</label>
+              <input
+                type="range"
+                min="0"
+                max="10"
+                step="0.1"
+                value={patternParams.animateOffsetX}
+                onChange={(e) => onPatternChange({ animateOffsetX: Number(e.target.value) })}
+              />
+            </div>
+
+            <div className="control-group">
+              <label>Anim Offset Y: {patternParams.animateOffsetY.toFixed(1)}</label>
+              <input
+                type="range"
+                min="0"
+                max="10"
+                step="0.1"
+                value={patternParams.animateOffsetY}
+                onChange={(e) => onPatternChange({ animateOffsetY: Number(e.target.value) })}
+              />
+            </div>
+          </div>
+        </>
+      )}
+
       <div className="controls-row info-row">
-        <span className="info-item">{cameraLabel}</span>
-        <span className="info-item">{SYNTH_MODES.find((m) => m.id === params.mode)?.description}</span>
+        {!isGenerator && <span className="info-item">{cameraLabel}</span>}
+        <span className="info-item">{SYNTH_MODES.find((m) => m.id === synthParams.mode)?.description}</span>
       </div>
 
       {showHelp && (
         <div className="controls-row help-row">
-          <span>Keys: 1-7 modes, A/D angle, W/S speed, +/- volume, C camera, R reset, H help, Q quit</span>
+          <span>Keys: 1-7 modes, A/D scan angle, W/S speed, +/- volume, G toggle source, R reset, H help</span>
         </div>
       )}
     </div>

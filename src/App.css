@@ -22,13 +22,20 @@
   text-align: center;
 }
 
-.video-container {
+.video-container,
+.pattern-container {
   position: relative;
   width: 100%;
   max-width: 640px;
   margin: 0 auto;
   background-color: #000;
   aspect-ratio: 4 / 3;
+}
+
+.pattern-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .video-element {

@@ -4,12 +4,15 @@ import { AudioEngine } from './audio/AudioEngine';
 import { Controls } from './components/Controls';
 import { Waveform } from './components/Waveform';
 import { VideoCanvas, type VideoCanvasHandle } from './components/VideoCanvas';
-import { DEFAULT_PARAMS, SYNTH_MODES } from './types';
-import type { SynthParams, SynthMode } from './types';
+import { PatternGenerator, type PatternGeneratorHandle } from './components/PatternGenerator';
+import { DEFAULT_PARAMS, SYNTH_MODES, DEFAULT_SYNTH_PARAMS, DEFAULT_PATTERN_PARAMS } from './types';
+import type { SynthParams, SynthMode, PatternParams, InputSource } from './types';
 import './App.css';
 
 function App() {
-  const [params, setParams] = useState<SynthParams>(DEFAULT_PARAMS);
+  const [inputSource, setInputSource] = useState<InputSource>(DEFAULT_PARAMS.inputSource);
+  const [synthParams, setSynthParams] = useState<SynthParams>(DEFAULT_SYNTH_PARAMS);
+  const [patternParams, setPatternParams] = useState<PatternParams>(DEFAULT_PATTERN_PARAMS);
   const [isRunning, setIsRunning] = useState(false);
   const [showHelp, setShowHelp] = useState(true);
   const [waveformData, setWaveformData] = useState<Float32Array | null>(null);
@@ -23,6 +26,7 @@ function App() {
 
   const audioEngineRef = useRef<AudioEngine | null>(null);
   const videoCanvasRef = useRef<VideoCanvasHandle>(null);
+  const patternRef = useRef<PatternGeneratorHandle>(null);
   const animationFrameRef = useRef<number>(0);
 
   const {
@@ -39,8 +43,8 @@ function App() {
   const currentCameraLabel =
     devices.find((d) => d.deviceId === currentDeviceId)?.label || 'No camera';
 
-  const handleParamsChange = useCallback((newParams: Partial<SynthParams>) => {
-    setParams((prev) => {
+  const handleSynthChange = useCallback((newParams: Partial<SynthParams>) => {
+    setSynthParams((prev) => {
       const updated = { ...prev, ...newParams };
       if (audioEngineRef.current && newParams.volume !== undefined) {
         audioEngineRef.current.setVolume(updated.volume);
@@ -49,12 +53,26 @@ function App() {
     });
   }, []);
 
+  const handlePatternChange = useCallback((newParams: Partial<PatternParams>) => {
+    setPatternParams((prev) => ({ ...prev, ...newParams }));
+  }, []);
+
+  const handleInputSourceChange = useCallback((source: InputSource) => {
+    setInputSource(source);
+  }, []);
+
   const processFrame = useCallback(() => {
-    if (!isRunning || !audioEngineRef.current || !videoCanvasRef.current) {
+    if (!isRunning || !audioEngineRef.current) {
       return;
     }
 
-    const imageData = videoCanvasRef.current.getImageData();
+    const sourceRef = inputSource === 'generator' ? patternRef : videoCanvasRef;
+    if (!sourceRef.current) {
+      animationFrameRef.current = requestAnimationFrame(processFrame);
+      return;
+    }
+
+    const imageData = sourceRef.current.getImageData();
     if (!imageData) {
       animationFrameRef.current = requestAnimationFrame(processFrame);
       return;
@@ -63,27 +81,27 @@ function App() {
     const engine = audioEngineRef.current;
     let coords = null;
 
-    switch (params.mode) {
+    switch (synthParams.mode) {
       case 'additive':
-        engine.synthesizeAdditive(imageData, params);
+        engine.synthesizeAdditive(imageData, synthParams);
         break;
       case 'spectral':
-        engine.synthesizeSpectral(imageData, params);
+        engine.synthesizeSpectral(imageData, synthParams);
         break;
       case 'scanline':
-        coords = engine.synthesizeScanline(imageData, params);
+        coords = engine.synthesizeScanline(imageData, synthParams);
         break;
       case 'scanline-color':
-        coords = engine.synthesizeScanlineColor(imageData, params);
+        coords = engine.synthesizeScanlineColor(imageData, synthParams);
         break;
       case 'rgb-additive':
-        engine.synthesizeRGBAdditive(imageData, params);
+        engine.synthesizeRGBAdditive(imageData, synthParams);
         break;
       case 'hsv':
-        engine.synthesizeHSV(imageData, params);
+        engine.synthesizeHSV(imageData, synthParams);
         break;
       case 'pulse':
-        engine.synthesizePulse(imageData, params);
+        engine.synthesizePulse(imageData, synthParams);
         break;
     }
 
@@ -97,17 +115,19 @@ function App() {
     setWaveformData(new Float32Array(waveform));
 
     animationFrameRef.current = requestAnimationFrame(processFrame);
-  }, [isRunning, params]);
+  }, [isRunning, synthParams, inputSource]);
 
   const handleStart = useCallback(async () => {
-    await startCamera();
+    if (inputSource === 'camera') {
+      await startCamera();
+    }
 
     const engine = new AudioEngine();
-    await engine.initialize(params);
+    await engine.initialize(synthParams);
     audioEngineRef.current = engine;
 
     setIsRunning(true);
-  }, [startCamera, params]);
+  }, [startCamera, synthParams, inputSource]);
 
   const handleStop = useCallback(() => {
     setIsRunning(false);
@@ -121,20 +141,23 @@ function App() {
       audioEngineRef.current = null;
     }
 
-    stopCamera();
+    if (inputSource === 'camera') {
+      stopCamera();
+    }
     setScanlineCoords(null);
     setWaveformData(null);
-  }, [stopCamera]);
+  }, [stopCamera, inputSource]);
 
   const handleReset = useCallback(() => {
     if (audioEngineRef.current) {
-      audioEngineRef.current.reset(params);
+      audioEngineRef.current.reset(synthParams);
     }
     setScanlineCoords(null);
-  }, [params]);
+  }, [synthParams]);
 
   useEffect(() => {
-    if (isRunning && cameraActive) {
+    const shouldRun = inputSource === 'generator' ? isRunning : isRunning && cameraActive;
+    if (shouldRun) {
       animationFrameRef.current = requestAnimationFrame(processFrame);
     }
 
@@ -143,7 +166,7 @@ function App() {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [isRunning, cameraActive, processFrame]);
+  }, [isRunning, cameraActive, processFrame, inputSource]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -161,31 +184,36 @@ function App() {
         case '7': {
           const modeIndex = parseInt(e.key) - 1;
           if (modeIndex < SYNTH_MODES.length) {
-            handleParamsChange({ mode: SYNTH_MODES[modeIndex].id as SynthMode });
+            handleSynthChange({ mode: SYNTH_MODES[modeIndex].id as SynthMode });
           }
           break;
         }
         case 'a':
-          handleParamsChange({ angle: Math.max(0, params.angle - 15) });
+          handleSynthChange({ angle: Math.max(0, synthParams.angle - 15) });
           break;
         case 'd':
-          handleParamsChange({ angle: Math.min(360, params.angle + 15) });
+          handleSynthChange({ angle: Math.min(360, synthParams.angle + 15) });
           break;
         case 'w':
-          handleParamsChange({ speed: Math.min(5, params.speed + 0.2) });
+          handleSynthChange({ speed: Math.min(5, synthParams.speed + 0.2) });
           break;
         case 's':
-          handleParamsChange({ speed: Math.max(0.1, params.speed - 0.2) });
+          handleSynthChange({ speed: Math.max(0.1, synthParams.speed - 0.2) });
           break;
         case '+':
         case '=':
-          handleParamsChange({ volume: Math.min(100, params.volume + 10) });
+          handleSynthChange({ volume: Math.min(100, synthParams.volume + 10) });
           break;
         case '-':
-          handleParamsChange({ volume: Math.max(0, params.volume - 10) });
+          handleSynthChange({ volume: Math.max(0, synthParams.volume - 10) });
+          break;
+        case 'g':
+          setInputSource((prev) => (prev === 'generator' ? 'camera' : 'generator'));
           break;
         case 'c':
-          switchCamera();
+          if (inputSource === 'camera') {
+            switchCamera();
+          }
           break;
         case 'r':
           handleReset();
@@ -202,7 +230,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [params, handleParamsChange, switchCamera, handleReset, handleStop]);
+  }, [synthParams, inputSource, handleSynthChange, switchCamera, handleReset, handleStop]);
 
   useEffect(() => {
     const updateWidth = () => {
@@ -213,26 +241,42 @@ function App() {
     return () => window.removeEventListener('resize', updateWidth);
   }, []);
 
-  const showScanline = params.mode === 'scanline' || params.mode === 'scanline-color';
+  const showScanline = synthParams.mode === 'scanline' || synthParams.mode === 'scanline-color';
 
   return (
     <div className="app">
       <div className="main-content">
-        {cameraError && <div className="error-message">{cameraError}</div>}
+        {inputSource === 'camera' && cameraError && (
+          <div className="error-message">{cameraError}</div>
+        )}
 
-        <VideoCanvas
-          ref={videoCanvasRef}
-          videoRef={videoRef}
-          showScanline={showScanline}
-          scanlineCoords={scanlineCoords}
-        />
+        {inputSource === 'generator' ? (
+          <PatternGenerator
+            ref={patternRef}
+            params={patternParams}
+            showScanline={showScanline}
+            scanlineCoords={scanlineCoords}
+            isRunning={isRunning}
+          />
+        ) : (
+          <VideoCanvas
+            ref={videoCanvasRef}
+            videoRef={videoRef}
+            showScanline={showScanline}
+            scanlineCoords={scanlineCoords}
+          />
+        )}
 
         <Waveform data={waveformData} width={containerWidth} height={80} />
 
         <Controls
-          params={params}
+          synthParams={synthParams}
+          patternParams={patternParams}
+          inputSource={inputSource}
           isRunning={isRunning}
-          onParamsChange={handleParamsChange}
+          onSynthChange={handleSynthChange}
+          onPatternChange={handlePatternChange}
+          onInputSourceChange={handleInputSourceChange}
           onStart={handleStart}
           onStop={handleStop}
           onReset={handleReset}
